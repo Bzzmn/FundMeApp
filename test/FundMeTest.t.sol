@@ -8,14 +8,16 @@ import {DeployFundMe} from "../script/DeployFundMe.s.sol";
 
 contract FundMeTest is Test {
     FundMe fundMe;
-    address USER = makeAddr("user");
+    address FUNDER = makeAddr("funder");
+    address OWNER;
     uint256 constant STARTING_BALANCE = 10 ether;
     uint256 constant FUND_AMOUNT = 0.1 ether;
 
     function setUp() external {
         DeployFundMe deployFundMe = new DeployFundMe();
         fundMe = deployFundMe.run();
-        vm.deal(USER, STARTING_BALANCE);
+        vm.deal(FUNDER, STARTING_BALANCE);
+        OWNER = fundMe.getOwner();
     }
 
     function testMinimumDollarIsFive() public view {
@@ -23,7 +25,7 @@ contract FundMeTest is Test {
     }
 
     function testOwnerIsMsgSender() public view {
-        assertEq(fundMe.i_owner(), msg.sender);
+        assertEq(OWNER, msg.sender);
     }
 
     // What can we do to work with addresses outside of our system?
@@ -47,27 +49,71 @@ contract FundMeTest is Test {
     }
 
     function testFundSuccess() public funded {
-        assertEq(fundMe.getAddressToAmountFunded(USER), FUND_AMOUNT);
+        assertEq(fundMe.getAddressToAmountFunded(FUNDER), FUND_AMOUNT);
     }
 
     function testFundUpdatesFundedDataStructure() public funded {
-        uint256 amountFunded = fundMe.getAddressToAmountFunded(USER);
+        uint256 amountFunded = fundMe.getAddressToAmountFunded(FUNDER);
         assertEq(amountFunded, FUND_AMOUNT);
     }
 
     function testAddsFunderToArray() public funded {
         address funder = fundMe.getFunder(0);
-        assertEq(funder, USER);
+        assertEq(funder, FUNDER);
     }
 
     function testWithdrawFailsNotOwner() public funded {
-        vm.prank(USER);
+        vm.prank(FUNDER);
         vm.expectRevert(); // hey, the next line should revert
         fundMe.withdraw();
     }
 
+    function testWithdrawWithASingleFunder() public funded {
+        // Arrange
+        uint256 ownerBalanceBefore = OWNER.balance;
+        uint256 fundMeBalanceBefore = address(fundMe).balance;
+
+        // Act
+        vm.prank(OWNER);
+        fundMe.withdraw();
+
+        // Assert
+        uint256 ownerBalanceAfter = OWNER.balance;
+        uint256 fundMeBalanceAfter = address(fundMe).balance;
+        assertEq(fundMeBalanceAfter, 0);
+        assertEq(ownerBalanceAfter, ownerBalanceBefore + fundMeBalanceBefore);
+    }
+
+    function testWithdrawWithMultipleFunders() public {
+        // Arrange
+        uint160 numberOfFunders = 10;
+        for (uint160 i = 0; i < numberOfFunders; i++) {
+            // vm.prank
+            // vm.deal
+            hoax(address(i), FUND_AMOUNT); // <-- this is a forge method.
+
+            // fundMe.fund;
+            fundMe.fund{value: FUND_AMOUNT}();
+        }
+
+        uint256 ownerBalanceBefore = OWNER.balance;
+        uint256 fundMeBalanceBefore = address(fundMe).balance;
+
+        // Act
+        vm.startPrank(OWNER);
+        fundMe.withdraw();
+        vm.stopPrank();
+
+        // Assert
+        uint256 ownerBalanceAfter = OWNER.balance;
+        uint256 fundMeBalanceAfter = address(fundMe).balance;
+
+        assertEq(fundMeBalanceAfter, 0);
+        assertEq(ownerBalanceAfter, ownerBalanceBefore + fundMeBalanceBefore);
+    }
+
     modifier funded() {
-        vm.prank(USER);
+        vm.prank(FUNDER);
         fundMe.fund{value: FUND_AMOUNT}();
         _;
     }
