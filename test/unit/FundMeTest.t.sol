@@ -3,8 +3,8 @@
 pragma solidity ^0.8.0;
 
 import {Test, console} from "forge-std/Test.sol";
-import {FundMe} from "../src/contracts/FundMe.sol";
-import {DeployFundMe} from "../script/DeployFundMe.s.sol";
+import {FundMe} from "../../src/contracts/FundMe.sol";
+import {DeployFundMe} from "../../script/DeployFundMe.s.sol";
 
 contract FundMeTest is Test {
     FundMe fundMe;
@@ -12,6 +12,7 @@ contract FundMeTest is Test {
     address OWNER;
     uint256 constant STARTING_BALANCE = 10 ether;
     uint256 constant FUND_AMOUNT = 0.1 ether;
+    // uint256 constant gasPrice = 1e9;
 
     function setUp() external {
         DeployFundMe deployFundMe = new DeployFundMe();

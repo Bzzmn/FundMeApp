@@ -15,3 +15,7 @@ docs/
 
 # Node modules
 node_modules/
+
+/zkout
+.DS_Store
+/broadcast
